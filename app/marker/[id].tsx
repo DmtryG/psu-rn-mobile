@@ -6,3 +6,164 @@ import { Ionicons } from '@expo/vector-icons';
 import { ImageData } from '../../types';
 import { useMarkers } from '../../contexts/MarkerContext';
 
+const { width } = Dimensions.get("window");
+const imageSize = (width - 60) / 2;
+
+export default function MarkerDetailScreen() {
+    const params = useLocalSearchParams();
+    const { id, latitude, longitude, title } = params;
+    const { getMarker, addImageToMarker, removeImageFromMarker } = useMarkers();
+    const [ isLoading, setIsLoading ] = useState (false);
+
+    const markerId = Array.isArray(id) ? id[0]: id;
+    const marker = markerId ? getMarker(markerId): undefined;
+
+    const requestPermissions = async () => {
+        if (Platform.OS !== "web") {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== "granted") {
+                Alert.alert(
+                    "Разрешение", "Необходимо разрешение для доступа к галерее"
+                );
+            }
+        }
+    };
+
+    const showImageSourceOptions = () => {
+        Alert.alert (
+            "Добавить изображение", "Выберите изображение",
+            [
+                {
+                    text: "Отмена",
+                    style: "cancel",
+                },
+                {
+                    text: "Галерея",
+                    onPress: pickImageFromGallery,
+                },
+            ]
+        );
+    };
+
+    const pickImageFromGallery = async () => {
+        try {
+            setIsLoading(true);
+            const result = await ImagePicker.launchImageLibraryAsync ({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 1,
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                addImage(result.assets[0]);
+            }
+        } catch (error) {
+            console.error ("Ошибка выбора изображения", error);
+            Alert.alert("Ошибка", "Не удалось выбрать изображение");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const addImage = ( asset: ImagePicker.ImagePickerAsset) => {
+        if (!markerId) return;
+
+        const newImage: ImageData = {
+            id: Date.now().toString(),
+            uri: asset.uri,
+            name: asset.fileName || `image_${Date.now()}.jpg`,
+            type: asset.type || "image/jpeg",
+            size: asset.fileSize,
+            addedAt: new Date(),
+        };
+
+        addImageToMarker(markerId, newImage);
+    };
+
+    const removeImage = (imageId: string) => {
+        Alert.alert (
+            "Удаление изображение", "Вы уверены, что хотите удалить изображение?",
+            [
+                {
+                    text: "Отмена",
+                    style: "cancel",
+                },
+                {
+                    text: "Удалить",
+                    style: "destructive",
+                    onPress: () => {
+                        if (markerId) {
+                            removeImageFromMarker(markerId, imageId);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const formatCoordinate = (coord: string | string[] | undefined) => {
+        if (!coord) return "0";
+        const coordStr = Array.isArray(coord) ? coord[0]: coord;
+        return parseFloat(coordStr).toFixed(6);
+    };
+
+    return (
+        <ScrollView style = { styles.container }>
+            <View style = {styles.header}>
+                <Text style = {styles.title}>{marker?.title}</Text>
+                <Text style={styles.coordinates}>
+          Координаты: {formatCoordinate(latitude)}, {formatCoordinate(longitude)}
+        </Text>
+            </View>
+        </ScrollView>
+    )
+}
+
+const styles = StyleSheet.create ({
+    container: {
+        flex: 1,
+        backgroundColor: "#f5f5f5",
+    },
+    header: {
+        backgroundColor: "#fff",
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: "#e0e0e0",
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: "bold",
+        color: "#333",
+        marginBottom: 8,
+    },
+    coordinates: {
+        fontSize: 16,
+        color: "#666",
+        fontFamily: "monospace",
+    },
+    section: {
+        backgroundColor: "#fff",
+        margin: 20,
+        borderRadius: 12,
+        padding: 20,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    sectionHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 600,
+        color: "#333"
+    }
+})
