@@ -16,7 +16,7 @@ export default function RootLayout() {
                     },
                     headerTintColor: "#000",
                     headerTitleStyle: {
-                        fontWeight: "medium",
+                        fontWeight: "bold",
                     },
                 }}
                 />
@@ -29,7 +29,7 @@ export default function RootLayout() {
                     },
                     headerTintColor: "#000",
                     headerTitleStyle: {
-                        fontWeight: "medium",
+                        fontWeight: "bold",
                     },
                 }}
                 />

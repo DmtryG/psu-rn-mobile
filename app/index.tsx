@@ -83,7 +83,7 @@ export default function MapScreen () {
     };
 
     const handleMarkerPress = (marker: MarkerData) => {
-        router.push(`/marker/${marker.id}`);
+        router.push(`/marker/${marker.id}?latitude=${marker.latitude}&longitude=${marker.longitude}&title=${encodeURIComponent(marker.title || '')}`);
     };
 
     if (isLoading) {

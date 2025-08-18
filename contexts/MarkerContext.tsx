@@ -44,7 +44,7 @@ export function MarkerProvider ({ children }: MarkerProviderProps) {
     const addImageToMarker = (markerId: string, image: ImageData) => {
         setMarkers (prevMarkers => 
             prevMarkers.map (marker =>
-                marker.id === marker.id ? { ...marker, 
+                marker.id === markerId ? { ...marker, 
                     images: [...marker.images, image]
                 }: marker
             )

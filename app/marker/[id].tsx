@@ -111,9 +111,30 @@ export default function MarkerDetailScreen() {
         <ScrollView style = { styles.container }>
             <View style = {styles.header}>
                 <Text style = {styles.title}>{marker?.title}</Text>
-                <Text style={styles.coordinates}>
-          Координаты: {formatCoordinate(latitude)}, {formatCoordinate(longitude)}
-        </Text>
+                <Text style = {styles.coordinates}>
+                    {formatCoordinate(latitude)}, {formatCoordinate(longitude)}
+                </Text>
+            </View>
+
+            <View style = {styles.section}>
+                <View style = {styles.sectionHeader}>
+                    <Text style = {styles.sectionTitle}>Изображения</Text>
+                    <TouchableOpacity
+                        style = {styles.addButton}
+                        onPress= {showImageSourceOptions}
+                        disabled = {isLoading}
+                    >
+                        <Ionicons name = "add" size = {22} color = "#fff"/>
+                        <Text style = {styles.addButtonText}>Добавить</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {(!marker?.images || marker.images.length === 0)} ? (
+                    <View style = {styles.emptyState}>
+                        <Ionicons name = "images-outline" size = {64} color = "#ccc" />
+                        <Text style = {styles.emptyText}>Нет изображений</Text>
+                    </View>
+                )
             </View>
         </ScrollView>
     )
@@ -139,7 +160,7 @@ const styles = StyleSheet.create ({
     coordinates: {
         fontSize: 16,
         color: "#666",
-        fontFamily: "monospace",
+        fontFamily: "Menlo",
     },
     section: {
         backgroundColor: "#fff",
@@ -162,8 +183,32 @@ const styles = StyleSheet.create ({
         marginBottom: 16,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 600,
         color: "#333"
-    }
+    },
+    addButton: {
+        backgroundColor: "#007AFF",
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 30,
+    },
+    addButtonText: {
+        color: "#fff",
+        fontWeight: 600,
+        marginLeft: 4,
+    },
+    emptyState: {
+        alignItems: "center",
+        paddingVertical: 40,
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: 600,
+        color: "#999",
+        paddingTop: 15,
+    },
+    
 })
