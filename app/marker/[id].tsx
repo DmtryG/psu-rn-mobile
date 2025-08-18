@@ -7,7 +7,7 @@ import { ImageData } from '../../types';
 import { useMarkers } from '../../contexts/MarkerContext';
 
 const { width } = Dimensions.get("window");
-const imageSize = (width - 60) / 2;
+const imageSize = width / 1.5;
 
 export default function MarkerDetailScreen() {
     const params = useLocalSearchParams();
@@ -129,13 +129,27 @@ export default function MarkerDetailScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {(!marker?.images || marker.images.length === 0)} ? (
-                    <View style = {styles.emptyState}>
-                        <Ionicons name = "images-outline" size = {64} color = "#ccc" />
-                        <Text style = {styles.emptyText}>Нет изображений</Text>
+                {(!marker?.images || marker.images.length === 0) ? (
+                    <View style={styles.emptyState}>
+                        <Ionicons name="images-outline" size={64} color="#ccc" />
+                        <Text style={styles.emptyText}>Нет изображений</Text>
                     </View>
-                )
+                ) : (
+                    <View style={styles.imageGrid}>
+                        {marker?.images.map((image) => (
+                            <View key={image.id} style={styles.imageContainer}>
+                                <Image source={{ uri: image.uri }} style={styles.image} />
+                                <TouchableOpacity
+                                    style={styles.deleteButton}
+                                    onPress={() => removeImage(image.id)}
+                                >
+                                    <Ionicons name="close" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                ))}
             </View>
+        )}
+        </View>
         </ScrollView>
     )
 }
@@ -208,7 +222,32 @@ const styles = StyleSheet.create ({
         fontSize: 18,
         fontWeight: 600,
         color: "#999",
-        paddingTop: 15,
+        marginTop: 15,
     },
-    
+    imageGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "center",
+    },
+    imageContainer: {
+        position: "relative",
+        marginBottom: 16,
+    },
+    image: {
+        width: imageSize,
+        height: imageSize,
+        borderRadius: 14,
+        backgroundColor: "#f0f0f0",
+    },
+    deleteButton: {
+        position: "absolute",
+        top: 8,
+        right: 8,
+        backgroundColor: "#ff3b30",
+        borderRadius: 15,
+        width: 30,
+        height: 30,
+        justifyContent: "center",
+        alignItems: "center",
+    }
 })
