@@ -1,7 +1,7 @@
 export interface MarkerData {
     id: string;
     latitude: number;
-    longtitude: number;
+    longitude: number;
     title?: string;
     description?: string;
     images: ImageData[];
@@ -23,14 +23,14 @@ export interface NavigationParams {
 
 export interface MapRegion {
     latitude: number;
-    longtitude: number;
+    longitude: number;
     latitudeDelta: number;
-    longtitudeDelta: number;
+    longitudeDelta: number;
 }
 
 export interface Coordinate {
     latitude: number;
-    longtitude: number;
+    longitude: number;
 }
 
 export interface MapPressEvent {

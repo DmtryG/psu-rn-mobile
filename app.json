@@ -13,7 +13,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +24,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Это приожение использует геолокацию для отображения позиции на карте"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Приложение запрашивает доступ к галерее для возможности добавления изображений к маркерам"
+        }
+      ]
+    ]
   }
 }
