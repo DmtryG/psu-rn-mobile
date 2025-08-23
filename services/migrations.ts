@@ -8,7 +8,48 @@ export interface Migration {
 }
 
 // миграция базы данных
+export const migrations: Migration[] = [
+    {
+        version: 1,
+        description: 'Создание базовых таблиц markers и marker_images',
+        up: async (db: SQLite.SQLiteDatabase) => {
+            // создание таблицы маркеров
+            await db.execAsync(`
+                CREATE TABLE IF NOT EXISTS markers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            `);
+            
+            // создание таблицы изображений
+            await db.execAsync(`
+                CREATE TABLE IF NOT EXISTS marker_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                marker_id INTEGER NOT NULL,
+                uri TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (marker_id) REFERENCES markers (id) ON DELETE CASCADE
+            );
+            `)
 
+            // создание индексов
+            await db.execAsync(`
+                CREATE INDEX IF NOT EXISTS idx_marker_images_marker_id
+                ON marker_images (marker_id);
+            `);
+
+            console.log ("Миграция v1: Базовые таблицы созданы");
+        },
+        down: async (db: SQLite.SQLiteDatabase) => {
+            await db.execAsync('DROP INDEX IF EXISTS idx_marker_images_marker_id;');
+            await db.execAsync('DROP TABLE IF EXISTS marker_images;');
+            await db.execAsync('DROP TABLE IF EXISTS markers;');
+            console.log('Миграция v1: Таблицы удалены');
+        }
+    },
+];
 
 export class MigrationManager {
     private db: SQLite.SQLiteDatabase;
@@ -62,7 +103,7 @@ export class MigrationManager {
 
     private async migrateUp (fromVersion: number, toVersion: number): Promise<void> {
         const applicableMigrations = migrations.filter(
-            m => m.version > fromVersion $$ m.version <= toVersion
+            m => m.version > fromVersion && m.version <= toVersion
         ).sort ((a, b) => a.version - b.version);
 
         for (const migration of applicableMigrations) {
@@ -79,5 +120,66 @@ export class MigrationManager {
             }
         }
     }
+    
+    private async migrateDown (fromVersion: number, toVersion: number): Promise<void> {
+        const applicableMigrations = migrations.filter(
+            m => m.version <= fromVersion && m.version > toVersion && m.down
+        ).sort((a, b) => b.version - a.version);
 
+        for (const migration of applicableMigrations) {
+            console.log(`Откат миграции v${migration.version}: ${migration.description}`);
+
+            try {
+                await this.db.withTransactionAsync (async () => {
+                    await migration.down!(this.db);
+                });
+                console.log(`Миграция v${migration.version} успешно отменена`);
+            } catch (error) {
+                console.error(`Ошибка отката миграции v${migration.version}:`, error);
+                throw new Error(`Не удалось отменить миграцию v${migration.version}: ${error}`);
+            }
+        }
+    }
+
+    private getLatestVersion (): number {
+        return Math.max(...migrations.map(m => m.version), 0);
+    }
+
+    async validateDatabase(): Promise<boolean> {
+        try {
+            // проверяем, что все необходимые таблицы существуют
+            const tables = await this.db.getAllAsync<{ name: string }>(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            );
+
+            const tableNames = tables.map(t => t.name);
+            const requiredTables = ['markers', 'marker_images'];
+
+            const missingTables = requiredTables.filter(t => !tableNames.includes(t));
+
+            if (missingTables.length > 0) {
+                console.error('Отсутствуют таблицы:', missingTables);
+                return false;
+            }
+
+            console.log("Валидация БД прошла успешно");
+            return true;
+        } catch (error) {
+            console.error('Ошибка валидации БД:', error);
+            return false;
+        }
+    }
+
+    async getSchema(): Promise<string[]> {
+        try {
+            const schema = await this.db.getAllAsync<{ sql: string }>(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            );
+
+            return schema.map(s => s.sql).filter(Boolean);
+        } catch (error) {
+            console.error("Ошибка получения схемы БД:", error);
+            return [];
+        }
+    }
 }
