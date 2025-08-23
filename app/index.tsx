@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+import { View, StyleSheet, Alert, Platform, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { MarkerData, MapRegion, MapPressEvent, Coordinate } from '../types';
 import { useMarkers } from '../contexts/MarkerContext';
 import * as Location from 'expo-location';
+import { useDatabase } from '../contexts/DatabaseContext';
+import { DatabaseInfo } from '../components/DatabaseInfo';
 
 const INITIAL_REGION: MapRegion = {
     latitude: 58.0092,
@@ -14,9 +17,11 @@ const INITIAL_REGION: MapRegion = {
 }
 
 export default function MapScreen () {
-    const { markers, addMarker } = useMarkers();
+    const { markers, addMarker, isLoading: markersLoading, error } = useMarkers();
+    const { isInitialized } = useDatabase();
     const [ region, setRegion ] = useState<MapRegion>(INITIAL_REGION);
-    const [ isLoading, setIsLoading ] = useState(true);
+    const [ isLocationLoading, setIsLocationLoading] = useState(true);
+    const [ showDatabaseInfo, setShowDatabaseInfo] = useState (false);
 
     useEffect(() => {
         getCurrentLocation();
@@ -30,7 +35,7 @@ export default function MapScreen () {
                     'Разрешение на геолокацию',
                     'Для работы приложения необходимо разрешение на использование геолокации'
                 );
-                setIsLoading(false);
+                setIsLocationLoading(false);
                 return;
             }
 
@@ -45,7 +50,7 @@ export default function MapScreen () {
             console.error ("Ошибка получения геолокации: ", error);
             Alert.alert ("Ошибка", "Не удалось получить геолокацию");
         } finally {
-            setIsLoading(false);
+            setIsLocationLoading(false);
         }
     };
 
@@ -68,26 +73,36 @@ export default function MapScreen () {
         );
     };
 
-    const handleAddMarker = (coordinate: Coordinate) => {
-        const newMarker: MarkerData = {
-            id: Date.now().toString(),
-            latitude: coordinate.latitude,
-            longitude: coordinate.longitude,
-            title: `Маркер ${markers.length + 1}`,
-            description: 'Новый маркер',
-            images: [],
-            createdAt: new Date(),
-        };
-
-        addMarker(newMarker);
-    };
+    const handleAddMarker = async (coordinate: Coordinate) => {
+        try {
+            await addMarker (coordinate.latitude, coordinate.longitude);
+        } catch (error) {
+            console.error("Ошибка добавления маркера", error);
+            Alert.alert ("Ошибка", "Не удалось добавить маркер");
+        }
+    }
 
     const handleMarkerPress = (marker: MarkerData) => {
         router.push(`/marker/${marker.id}?latitude=${marker.latitude}&longitude=${marker.longitude}&title=${encodeURIComponent(marker.title || '')}`);
     };
 
-    if (isLoading) {
-        return <View style = {styles.container} />
+    if (!isInitialized || isLocationLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>
+                    {!isInitialized ? 'Инициализация базы данных...' : 'Получение местоположения...'}
+                </Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Ошибка: {error.message}</Text>
+            </View>
+        )
     }
 
     return (
@@ -115,8 +130,19 @@ export default function MapScreen () {
                     />
                 ))}
             </MapView>
-            
+            {__DEV__ && (
+                <TouchableOpacity
+                style={styles.dbInfoButton}
+                onPress={() => setShowDatabaseInfo(true)}
+                >
+                    <Ionicons name="information-circle" size={24} color="#fff" />
+                </TouchableOpacity>
+            )}
 
+            <DatabaseInfo
+            visible={showDatabaseInfo}
+            onClose={() => setShowDatabaseInfo(false)}
+            />
         </View>
     );
 }
@@ -127,5 +153,47 @@ const styles = StyleSheet.create ({
     },
     map: {
         flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#666',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#d32f2f',
+        textAlign: 'center',
+    },
+    dbInfoButton: {
+        position: 'absolute',
+        top: 50,
+        right: 16,
+        backgroundColor: '#007AFF',
+        borderRadius: 25,
+        width: 50,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+        width: 0,
+        height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
     },
 });
