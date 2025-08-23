@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Dimensions, Platform, } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Dimensions, Platform, ActivityIndicator} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { ImageData } from '../../types';
 import { useMarkers } from '../../contexts/MarkerContext';
+import { useDatabase } from '../../contexts/DatabaseContext';
 
 const { width } = Dimensions.get("window");
 const imageSize = width / 1.5;
@@ -12,11 +13,28 @@ const imageSize = width / 1.5;
 export default function MarkerDetailScreen() {
     const params = useLocalSearchParams();
     const { id, latitude, longitude, title } = params;
-    const { getMarker, addImageToMarker, removeImageFromMarker } = useMarkers();
-    const [ isLoading, setIsLoading ] = useState (false);
+    const {
+        getMarker,
+        addImageToMarker,
+        removeImageFromMarker,
+        refreshMarkerImages,
+        isLoading: markersLoading,
+        error
+    } = useMarkers();
+    const { isInitialized } = useDatabase();
+    const [ isImageLoading, setIsImageLoading ] = useState(false);
 
     const markerId = Array.isArray(id) ? id[0]: id;
     const marker = markerId ? getMarker(markerId): undefined;
+
+    useEffect(() => {
+        requestPermissions();
+
+        // обновляем изображения при входе в экран
+        if (markerId && isInitialized ) {
+            refreshMarkerImages(markerId);
+        }
+    }, [markerId, isInitialized]);
 
     const requestPermissions = async () => {
         if (Platform.OS !== "web") {
@@ -47,7 +65,7 @@ export default function MarkerDetailScreen() {
 
     const pickImageFromGallery = async () => {
         try {
-            setIsLoading(true);
+            setIsImageLoading(true);
             const result = await ImagePicker.launchImageLibraryAsync ({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
@@ -55,29 +73,25 @@ export default function MarkerDetailScreen() {
             });
 
             if (!result.canceled && result.assets[0]) {
-                addImage(result.assets[0]);
+                await addImage(result.assets[0]);
             }
         } catch (error) {
             console.error ("Ошибка выбора изображения", error);
             Alert.alert("Ошибка", "Не удалось выбрать изображение");
         } finally {
-            setIsLoading(false);
+            setIsImageLoading(false);
         }
     };
 
-    const addImage = ( asset: ImagePicker.ImagePickerAsset) => {
+    const addImage = async ( asset: ImagePicker.ImagePickerAsset) => {
         if (!markerId) return;
 
-        const newImage: ImageData = {
-            id: Date.now().toString(),
-            uri: asset.uri,
-            name: asset.fileName || `image_${Date.now()}.jpg`,
-            type: asset.type || "image/jpeg",
-            size: asset.fileSize,
-            addedAt: new Date(),
-        };
-
-        addImageToMarker(markerId, newImage);
+        try {
+            await addImageToMarker(markerId, asset.uri);
+        } catch (error) {
+            console.error("Ошибка удаления изображения", error);
+            Alert.alert("Ошибка", "Не удалось удалить изображение");
+        }
     };
 
     const removeImage = (imageId: string) => {
@@ -91,9 +105,14 @@ export default function MarkerDetailScreen() {
                 {
                     text: "Удалить",
                     style: "destructive",
-                    onPress: () => {
+                    onPress: async () => {
                         if (markerId) {
-                            removeImageFromMarker(markerId, imageId);
+                            try {
+                                await removeImageFromMarker(markerId, imageId);
+                            } catch (error) {
+                                console.error ("Ошибка удаления изображения", error);
+                                Alert.alert("Ошибка", "Не удалось удалить изображение");
+                            }
                         }
                     },
                 },
@@ -120,12 +139,21 @@ export default function MarkerDetailScreen() {
                 <View style = {styles.sectionHeader}>
                     <Text style = {styles.sectionTitle}>Изображения</Text>
                     <TouchableOpacity
-                        style = {styles.addButton}
+                        style = {[
+                            styles.addButton, 
+                            (isImageLoading || markersLoading) && styles.addButtonDisabled
+                        ]}
                         onPress= {showImageSourceOptions}
-                        disabled = {isLoading}
+                        disabled = {isImageLoading || markersLoading}
                     >
+                        {(isImageLoading || markersLoading) ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
                         <Ionicons name = "add" size = {22} color = "#fff"/>
-                        <Text style = {styles.addButtonText}>Добавить</Text>
+                        )}
+                        <Text style={styles.addButtonText}>
+                            {(isImageLoading || markersLoading) ? 'Загрузка...' : 'Добавить'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
@@ -213,6 +241,9 @@ const styles = StyleSheet.create ({
         color: "#fff",
         fontWeight: 600,
         marginLeft: 4,
+    },
+    addButtonDisabled: {
+        opacity: 0.6,
     },
     emptyState: {
         alignItems: "center",
