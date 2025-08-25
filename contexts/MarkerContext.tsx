@@ -1,15 +1,22 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { MarkerData, ImageData } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { MarkerData, ImageData, DBMarker, DBMarkerImage } from '../types';
+import { useDatabase } from './DatabaseContext';
 
 interface MarkerContextType {
     markers: MarkerData[];
+    isLoading: boolean;
+    error: Error | null;
 
-    addMarker: (marker: MarkerData) => void;
-    updateMarker: (markerId: string, updates: Partial<MarkerData>) => void;
-    deleteMarker: (markerId: string) => void;
+    // операции с маркерами
+    addMarker: (latitude: number, longitude: number) => Promise<MarkerData>;
+    deleteMarker: (markerId: string) => Promise<void>;
     getMarker: (markerId: string) => MarkerData | undefined;
-    addImageToMarker: (markerId: string, image: ImageData) => void;
-    removeImageFromMarker: (markerId: string, imageId: string) => void;
+    refreshMarkers: () => Promise<void>;
+
+    // операции с изображениями
+    addImageToMarker: (markerId: string, uri: string) => Promise<void>;
+    removeImageFromMarker: (markerId: string, imageId: string) => Promise<void>;
+    refreshMarkerImages: (markerId: string) => Promise<void>;
 }
 
 const MarkerContext = createContext<MarkerContextType | undefined>(undefined);
@@ -20,55 +27,177 @@ interface MarkerProviderProps {
 
 export function MarkerProvider ({ children }: MarkerProviderProps) {
     const [markers, setMarkers] = useState<MarkerData[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<Error | null> (null);
+
+    const database = useDatabase();
+
+    useEffect(() => {
+        if (database.isInitialized) {
+            refreshMarkers();
+        }
+    }, [database.isInitialized]);
     
-    const addMarker = (marker: MarkerData) => {
-        setMarkers (prevMarkers => [...prevMarkers, marker]);
+    // утилитарная функция для преобразования DB сущностей в UI модели
+    const convertDBMarkerToMarkerData = async (dbMarker: DBMarker): Promise<MarkerData> => {
+        const images = await database.getMarkerImages(dbMarker.id);
+        return {
+        id: dbMarker.id.toString(),
+        latitude: dbMarker.latitude,
+        longitude: dbMarker.longitude,
+        title: `Маркер ${dbMarker.id}`,
+        description: 'Маркер с базы данных',
+        images: images.map(convertDBImageToImageData),
+        createdAt: new Date(dbMarker.created_at),
+        };
     };
 
-    const updateMarker = (markerId: string, updates: Partial<MarkerData>) => {
-        setMarkers (prevMarkers => 
-            prevMarkers.map(marker => 
-                marker.id === markerId ? { ...marker, ...updates}: marker
-            )
-        );
+    const convertDBImageToImageData = (dbImage: DBMarkerImage): ImageData => {
+        return {
+        id: dbImage.id.toString(),
+        uri: dbImage.uri,
+        name: `image_${dbImage.id}.jpg`,
+        type: 'image/jpeg',
+        addedAt: new Date(dbImage.created_at),
+        };
     };
 
-    const deleteMarker = (markerId: string) => {
-        setMarkers (prevMarkers => prevMarkers.filter(marker => marker.id !== markerId));
+    // операции с маркерами
+    const addMarker = async (latitude: number, longitude: number): Promise<MarkerData> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const dbMarkerId = await database.addMarker(latitude, longitude);
+            const dbMarker: DBMarker = {
+                id: dbMarkerId,
+                latitude,
+                longitude,
+                created_at: new Date().toISOString(),
+            };
+
+            const newMarker = await convertDBMarkerToMarkerData(dbMarker);
+            setMarkers(prevMarkers => [...prevMarkers, newMarker]);
+
+            return newMarker;
+        } catch (error) {
+            console.error("Ошибка добавления маркера: ", error);
+            setError(error as Error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const getMarker = (markerId: string) => {
-        return markers.find (marker => marker.id === markerId);
+    const deleteMarker = async (markerId: string): Promise<void> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const numericId = parseInt(markerId, 10);
+            await database.deleteMarker(numericId);
+
+            setMarkers(prevMarkers => prevMarkers.filter(marker => marker.id !== markerId));
+        } catch (error) {
+            console.error("Ошибка удаления маркера: ", error);
+            setError(error as Error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const addImageToMarker = (markerId: string, image: ImageData) => {
-        setMarkers (prevMarkers => 
-            prevMarkers.map (marker =>
-                marker.id === markerId ? { ...marker, 
-                    images: [...marker.images, image]
-                }: marker
-            )
-        );
+    const refreshMarkers = async (): Promise<void> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const dbMarkers = await database.getMarkers();
+            const markersWithImages = await Promise.all(
+                dbMarkers.map(convertDBMarkerToMarkerData)
+            );
+
+            setMarkers(markersWithImages);
+        } catch (error) {
+            console.error("Ошибка загрузки маркеров: ", error);
+            setError(error as Error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const removeImageFromMarker = (markerId: string, imageId: string) => {
-        setMarkers (prevMarkers =>
-            prevMarkers.map(marker =>
-                marker.id === markerId ? { ...marker, 
-                    images: marker.images.filter(img => img.id !== imageId)
-                }: marker
-            )
-        );
+    const getMarker = (markerId: string): MarkerData | undefined => {
+        return markers.find(marker => marker.id === markerId);
+    };
+
+    // операции с изображениями
+    const addImageToMarker = async (markerId: string, uri: string): Promise<void> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const numericId = parseInt(markerId, 10);
+            await database.addImage(numericId, uri);
+
+            // обновляем локальное состояние
+            await refreshMarkerImages(markerId);
+        } catch (error) {
+            console.error("Ошибка добавления изображения: ", error);
+            setError(error as Error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const removeImageFromMarker = async (markerId: string, imageId: string): Promise<void> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const numericImageId = parseInt(imageId, 10);
+            await database.deleteImage(numericImageId);
+
+            // обновляем локальное состояние
+            await refreshMarkerImages(markerId);
+        } catch (error) {
+            console.error("Ошибка удаления изображения:", error);
+            setError(error as Error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const refreshMarkerImages = async (markerId: string): Promise<void> => {
+        try {
+            const numericId = parseInt(markerId, 10);
+            const images = await database.getMarkerImages(numericId);
+
+            setMarkers(prevMarkers =>
+                prevMarkers.map(marker => 
+                    marker.id === markerId
+                    ? { ...marker, images: images.map(convertDBImageToImageData) }
+                    : marker
+                )
+            );
+        } catch (error) {
+            console.error("Ошибка обновления изображений маркера: ", error);
+            setError(error as Error);
+        }
     };
 
     const value: MarkerContextType = {
         markers,
+        isLoading,
+        error,
         addMarker,
-        updateMarker,
         deleteMarker,
         getMarker,
+        refreshMarkers,
         addImageToMarker,
         removeImageFromMarker,
+        refreshMarkerImages,
     };
 
     return (
