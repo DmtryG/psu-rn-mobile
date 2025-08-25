@@ -10,8 +10,8 @@ import { useDatabase } from '../contexts/DatabaseContext';
 import { DatabaseInfo } from '../components/DatabaseInfo';
 
 const INITIAL_REGION: MapRegion = {
-    latitude: 58.0092,
-    longitude: 56.2270,
+    latitude: 55.7558,
+    longitude: 37.6173,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
 }
