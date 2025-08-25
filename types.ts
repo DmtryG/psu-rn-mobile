@@ -68,3 +68,48 @@ export interface DatabaseContextType {
     error: Error | null;
     isInitialized: boolean;
 }
+
+// location и notifications типы
+export interface LocationConfig {
+    accuracy: number; 
+    timeInterval: number; // частота обновления изображения
+    distanceInterval: number; // минимальное расстояние в метрах между обновлениями
+}
+
+export interface LocationState {
+    location: any | null;
+    errorMsg: string | null;
+    isTracking: boolean;
+    lastUpdate: Date | null;
+}
+
+export interface ActiveNotification {
+    markerId: string;
+    notificationId: string;
+    timestamp: number;
+    distance: number;
+}
+
+export interface ProximitySettings {
+    threshold: number; // порог расстояния в метрах
+    enabled: boolean; 
+    cooldownPeriod: number; // период кулдауна между уведомлениями в мс
+}
+
+export interface LocationContextType {
+    // состояние местоположения
+    locationState: LocationState;
+    proximitySettings: ProximitySettings;
+
+    // управление отслеживанием
+    startTracking: () => Promise<void>;
+    stopTracking: () => void;
+
+    // управление уведомлениями
+    setProximityEnabled: (enabled: boolean) => void;
+    setProximityThreshold: (threshold: number) => void;
+
+    // статусы и ошибки
+    isLoading: boolean;
+    error: Error | null;
+}
