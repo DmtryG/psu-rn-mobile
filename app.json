@@ -30,7 +30,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Это приожение использует геолокацию для отображения позиции на карте"
+          "locationAlwaysAndWhenInUsePermission": "Это приложение использует местоположение для отображения вашей позиции на карте и уведомлений о близости к маркерам",
+          "isIosBackgroundLocationEnabled": false
         }
       ],
       [
@@ -39,7 +40,16 @@
           "photosPermission": "Приложение запрашивает доступ к галерее для возможности добавления изображений к маркерам"
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2196F3",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ]
     ]
   }
 }

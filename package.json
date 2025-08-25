@@ -18,7 +18,8 @@
     "react-native": "0.79.5",
     "react-native-maps": "1.20.1",
     "expo-location": "~18.1.6",
-    "expo-sqlite": "~15.2.14"
+    "expo-sqlite": "~15.2.14",
+    "expo-notifications": "~0.31.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
