@@ -2,11 +2,13 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { MarkerProvider } from '../contexts/MarkerContext';
 import { DatabaseProvider } from '../contexts/DatabaseContext';
+import { LocationProvider } from '../contexts/LocationContext';
 
 export default function RootLayout() {
     return (
         <DatabaseProvider>
             <MarkerProvider>
+                <LocationProvider>
                 <StatusBar style = "auto" />
                 <Stack>
                     <Stack.Screen
@@ -36,6 +38,7 @@ export default function RootLayout() {
                     }}
                     />
                 </Stack>
+                </LocationProvider>
             </MarkerProvider>
         </DatabaseProvider>
     );
