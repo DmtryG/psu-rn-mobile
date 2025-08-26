@@ -213,5 +213,94 @@ export function LocationProvider({ children }: LocationProviderProps) {
         }
     };
 
-    const testNotification = async (): Promise<void>
+    const testNotification = async (): Promise<void> => {
+        try {
+            await notificationManager.sendTestNotification();
+        } catch (error) {
+            console.error("Ошибка тестового уведомления", error);
+            setError(error as Error);
+        }
+    };
+
+    const value: LocationContextType = {
+        locationState,
+        proximitySettings,
+        startTracking,
+        stopTracking,
+        setProximityEnabled,
+        setProximityThreshold,
+        isLoading,
+        error,
+    };
+
+    return (
+        <LocationContext.Provider value = { value }>
+            { children }
+        </LocationContext.Provider>
+    );
+}
+
+export function useLocation() {
+    const context = useContext(LocationContext);
+    if (context === undefined) {
+        throw new Error ("useLocation должна быть использована внутри LocationProvider");
+    }
+    return context;
+}
+
+// дополнительные хуки для удобства
+
+export function useLocationPermissions() {
+    const {error} = useLocation();
+
+    const checkPermissions = async () => {
+        try {
+            const status = await locationService.getPermissionStatus();
+            return status === "granted";
+        } catch (error) {
+            console.error("Ошибка проверки разрешений", error);
+            return false;
+        }
+    };
+
+    const requestPermissions = async () => {
+        try {
+            return await locationService.requestPermissions();
+        } catch (error) {
+            console.error("Ошибка запроса разрешений", error);
+            return false;
+        }
+    };
+
+    return {
+        checkPermissions,
+        requestPermissions,
+        hasError: !!error,
+        error,
+    };
+}
+
+export function useProximity() {
+    const { proximitySettings, setProximityEnabled, setProximityThreshold } = useLocation();
+
+    const toggleProximity = () => {
+        setProximityEnabled(!proximitySettings.enabled);
+    };
+
+    const updateThreshold = (threshold: number) => {
+        setProximityThreshold(threshold);
+    };
+
+    const getActiveNotifications = () => {
+        return notificationManager.getActiveNotifications();
+    };
+
+    return {
+        settings: proximitySettings,
+        toggleProximity,
+        updateThreshold,
+        getActiveNotifications,
+        isEnabled: proximitySettings.enabled,
+        threshold: proximitySettings.threshold,
+    };
 }
