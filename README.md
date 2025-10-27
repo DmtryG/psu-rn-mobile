@@ -1,98 +1,36 @@
+# Practical Assignment for the Course “Application Development Technologies for Mobile Platforms”
+
 <img src="images/promo.png" />
 
-# Практическое задание по дисциплине "Технологии разработки приложений для мобильных платформ"
-Мобильное приложение на React Native с картой, которое позволяет пользователям добавлять маркеры на карту и прикреплять к ним изображения.
-## Функциональность
-- Интерактивная карта с возможностью добавления маркеров
-- Долгое нажатие для добавления нового маркера
-- Навигация между экранами с помощью Expo Router
-- Добавление изображений к маркерам из галереи 
-- Удаление изображений
-- Отображение текущего местоположения пользователя
-- Персистентное хранение данных в SQLite
-- Автоматическая миграция базы данных
-- Система управления ошибками и восстановления
-- GPS-трекинг в реальном времени
-- Локальные уведомления о приближении к маркерам
-- Визуализация зон приближения на карте
-- Умное управление уведомлениями
+A React Native mobile application with an interactive map that allows users to add markers and attach images to them.
 
-## Установка и запуск
-### Установка зависимостей
+## Features
+* Interactive map with the ability to add markers
+* Long press to add a new marker
+* Adding images to markers from the gallery
+* Deleting attached images
+* Displaying the user’s current location
+* Real-time GPS tracking
+* Local notifications when approaching markers
+* Persistent data storage using SQLite
+
+## Building the project
+### 1. Clone the repo
+```bash
+git clone https://github.com/DmtryG/psu-rn-mobile.git
+```
+
+### 2. Install dependencies
+In the same folder that contains the `psu-rn-mobile`, run this command:
 ```bash
 npm install
 ```
-### Запуск приложения
+
+### 3. Run the application
 ```bash
-# Запуск в режиме разработки
+# start in development mode
 npm start
 
-# Запуск на iOS
+# run on iOS
 npm run ios
-```
-
-## Использование
-
-### Добавление маркера
-
-1. Откройте приложение
-2. Удерживайте палец на карте в нужном месте
-3. Подтвердите добавление маркера в диалоговом окне
-
-### Управление изображениями
-
-1. Нажмите на маркер на карте
-2. На экране деталей нажмите кнопку "Добавить"
-3. Выберите изображение из галереи
-4. Для удаления изображения нажмите на крестик в правом верхнем углу изображения
-
-### База данных
-
-Приложение использует SQLite для локального хранения данных:
-
-- **Маркеры** сохраняются с координатами и временем создания
-- **Изображения** привязываются к маркерам через внешние ключи
-- **Автоматические миграции** обеспечивают обновление схемы БД
-- **Транзакции** гарантируют целостность данных
-
-### GPS-трекинг и уведомления
-
-Приложение автоматически отслеживает ваше местоположение:
-
-- **GPS-трекинг** запускается автоматически при открытии карты
-- **Уведомления** отправляются при приближении к маркерам (по умолчанию 100м)
-- **Визуальные зоны** можно включить кнопкой в панели управления
-
-## Разрешения
-
-Приложение запрашивает следующие разрешения:
-
-- **Местоположение** - для отображения текущей позиции на карте и GPS-трекинга
-- **Уведомления** - для отправки локальных уведомлений о приближении к маркерам
-- **Галерея** - для выбора изображений из библиотеки
-
-## Архитектура базы данных
-
-### Схема таблиц
-
-```sql
--- Таблица маркеров
-CREATE TABLE markers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    latitude REAL NOT NULL,
-    longitude REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Таблица изображений
-CREATE TABLE marker_images (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    marker_id INTEGER NOT NULL,
-    uri TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (marker_id) REFERENCES markers (id) ON DELETE CASCADE
-);
-
--- Индекс для оптимизации
-CREATE INDEX idx_marker_images_marker_id ON marker_images (marker_id);
 ```
